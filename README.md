@@ -42,6 +42,14 @@ Large parts of the implementation are closely related to the hybrid A* algorithm
 
 Run the following command to clone, build, and launch the package (requires a sources ROS environment):
 
+config:
+
+```shell
+sudo apt install libompl-dev
+sudo apt-get install libsdl-dev
+sudo apt-get install ros-noetic-navigation
+```
+
 ```
 sudo apt install libompl-dev \
 && mkdir -p ~/catkin_ws/src \
