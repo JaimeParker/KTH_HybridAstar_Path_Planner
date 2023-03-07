@@ -4,7 +4,7 @@
 */
 
 //###################################################
-//                      HYBRID A* ALGORITHM
+//  HYBRID A* ALGORITHM
 //  AUTHOR:   Karl Kurzer
 //  WRITTEN:  2015-03-02
 //###################################################
@@ -17,7 +17,7 @@
 #include "planner.h"
 
 //###################################################
-//                              COUT STANDARD MESSAGE
+//  COUT STANDARD MESSAGE
 //###################################################
 /**
    \fn message(const T& msg, T1 val = T1())
@@ -25,15 +25,15 @@
 */
 template<typename T, typename T1>
 void message(const T& msg, T1 val = T1()) {
-  if (!val) {
-    std::cout << "### " << msg << std::endl;
-  } else {
-    std::cout << "### " << msg << val << std::endl;
-  }
+    if (!val) {
+        std::cout << "### " << msg << std::endl;
+    } else {
+        std::cout << "### " << msg << val << std::endl;
+    }
 }
 
 //###################################################
-//                                               MAIN
+//  MAIN
 //###################################################
 /**
    \fn main(int argc, char** argv)
@@ -43,22 +43,26 @@ void message(const T& msg, T1 val = T1()) {
    \return 0
 */
 int main(int argc, char** argv) {
+    // author message
+    message<string, int>("Hybrid A* Search\nA pathfinding algorithm on grids, by Karl Kurzer");
 
-  message<string, int>("Hybrid A* Search\nA pathfinding algorithm on grids, by Karl Kurzer");
+    message("cell size: ", HybridAStar::Constants::cellSize);
 
-  message("cell size: ", HybridAStar::Constants::cellSize);
+    // if statement use a const variable
+    if (HybridAStar::Constants::manual) {
+        message("mode: ", "manual");
+    } else {
+        message("mode: ", "auto");
+    }
 
-  if (HybridAStar::Constants::manual) {
-    message("mode: ", "manual");
-  } else {
-    message("mode: ", "auto");
-  }
+    // init ros node
+    ros::init(argc, argv, "a_star");
 
-  ros::init(argc, argv, "a_star");
+    // main function
+    HybridAStar::Planner hy;
+    hy.plan();
 
-  HybridAStar::Planner hy;
-  hy.plan(); 
+    ros::spin();
+    return 0;
 
-  ros::spin();
-  return 0;
 }
