@@ -5,27 +5,28 @@ using namespace HybridAStar;
 //                                        CONSTRUCTOR
 //###################################################
 Planner::Planner() {
-  // _____
-  // TODOS
-  //    initializeLookups();
-  // Lookup::collisionLookup(collisionLookup);
-  // ___________________
-  // COLLISION DETECTION
-  //    CollisionDetection configurationSpace;
-  // _________________
-  // TOPICS TO PUBLISH
-  pubStart = n.advertise<geometry_msgs::PoseStamped>("/move_base_simple/start", 1);
+    // _____
+    // TODOS
+    //    initializeLookups();
+    // Lookup::collisionLookup(collisionLookup);
+    // ___________________
+    // COLLISION DETECTION
+    //    CollisionDetection configurationSpace;
+    // _________________
+    // TOPICS TO PUBLISH
+    pubStart = n.advertise<geometry_msgs::PoseStamped>("/move_base_simple/start", 1);
+    // start point is published at function setStart
 
-  // ___________________
-  // TOPICS TO SUBSCRIBE
-  if (Constants::manual) {
-    subMap = n.subscribe("/map", 1, &Planner::setMap, this);
-  } else {
-    subMap = n.subscribe("/occ_map", 1, &Planner::setMap, this);
-  }
+    // ___________________
+    // TOPICS TO SUBSCRIBE
+    if (Constants::manual) {
+        subMap = n.subscribe("/map", 1, &Planner::setMap, this);
+    } else {
+        subMap = n.subscribe("/occ_map", 1, &Planner::setMap, this);
+    }
 
-  subGoal = n.subscribe("/move_base_simple/goal", 1, &Planner::setGoal, this);
-  subStart = n.subscribe("/initialpose", 1, &Planner::setStart, this);
+    subGoal = n.subscribe("/move_base_simple/goal", 1, &Planner::setGoal, this);
+    subStart = n.subscribe("/initialpose", 1, &Planner::setStart, this);
 };
 
 //###################################################

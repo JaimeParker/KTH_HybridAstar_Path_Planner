@@ -60,7 +60,7 @@ int main(int argc, char** argv) {
 
     // main function
     HybridAStar::Planner hy;
-    hy.plan();
+    hy.plan();  // main process
 
     ros::spin();
     return 0;
