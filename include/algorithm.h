@@ -22,12 +22,12 @@ class Visualize;
  * \brief A class that encompasses the functions central to the search.
  */
 class Algorithm {
- public:
-  /// The deault constructor
-  Algorithm() {}
+public:
+    /// The deault constructor
+    Algorithm() {}
 
-  // HYBRID A* ALGORITHM
-  /*!
+    // HYBRID A* ALGORITHM
+    /*!
      \brief The heart of the planner, the main algorithm starting the search for a collision free and drivable path.
 
      \param start the start pose
@@ -40,8 +40,8 @@ class Algorithm {
      \param dubinsLookup the lookup of analytical solutions (Dubin's paths)
      \param visualization the visualization object publishing the search to RViz
      \return the pointer to the node satisfying the goal condition
-  */
-  static Node3D* hybridAStar(Node3D& start,
+    */
+    static Node3D* hybridAStar(Node3D& start,
                              const Node3D& goal,
                              Node3D* nodes3D,
                              Node2D* nodes2D,
