@@ -97,9 +97,63 @@ using a `?:` operator, can be simplified as `xxx != 0`;
 
 some voronoi diagram stuff, ignore here. `binMap` is used in voronoi diagram.
 
-#### 1.1.2 set start
+#### 1.1.2 set goal
 
-#### 1.1.3 set goal
+```c++
+    // retrieving goal position
+    float x = end->pose.position.x / Constants::cellSize;
+    float y = end->pose.position.y / Constants::cellSize;
+    float t = tf::getYaw(end->pose.orientation);
+
+    std::cout << "I am seeing a new goal x:" << x << " y:" << y << " t:" << Helper::toDeg(t) << std::endl;
+
+    if (grid->info.height >= y && y >= 0 && grid->info.width >= x && x >= 0) {
+        validGoal = true;
+        goal = *end;
+
+        if (Constants::manual){
+            plan();
+        }
+    } 
+```
+
+why call `plan()` here?
+
+#### 1.1.3 set start
+
+```c++
+void Planner::setStart(const geometry_msgs::PoseWithCovarianceStamped::ConstPtr& initial) {
+    float x = initial->pose.pose.position.x / Constants::cellSize;
+    float y = initial->pose.pose.position.y / Constants::cellSize;
+    float t = tf::getYaw(initial->pose.pose.orientation);
+}
+```
+
+set coordinates of start.
+
+```c++
+    geometry_msgs::PoseStamped startN;
+    startN.pose.position = initial->pose.pose.position;
+    startN.pose.orientation = initial->pose.pose.orientation;
+    startN.header.frame_id = "map";
+    startN.header.stamp = ros::Time::now();
+
+    if (grid->info.height >= y && y >= 0 && grid->info.width >= x && x >= 0) {
+        validStart = true;
+        start = *initial;
+    
+        if (Constants::manual) { plan();}
+    
+        // publish start for RViz
+        pubStart.publish(startN);
+    }
+```
+
+if start is valid, call `plan()` here, and publish start information to topic `"/move_base_simple/start"`.
+
+but I'm confused why `plan()` need to be called here, even it will be called in the next step in `main`?
+
+before the program running into `ros::spin()`, message of start and goal is sent by publisher, 
 
 then the program goes into `plan()`
 
@@ -176,7 +230,7 @@ but I'm still confused about the data transferring between ROS-rviz and this pro
 **Providing a ROS graph here**,
 ![rqt_graph](images/rosgraph.png)
 
-summarise some questions:
+Summarise some questions:
 
 * what is the different between `initialpose` and `move_base_simple/start`?
 * in which way the map image is delivered?
@@ -187,6 +241,35 @@ In detail, by loading a `yaml` file to choose map file, namely a jpg file.
 
 According to the simulation process, user can add start and goal in rviz. 
 Meanwhile, data will be transferred to this program, through ROS master and node, but which node?
+
+### 1.3 Overall Analysis
+
+我为什么又写了这么一节？因为耽搁了几天回来再看的时候，我忘了我写到哪了，就记得整体的数据流还没分析清楚。
+上面的1.1， 1.2两个小节也提出了一些问题，在此做一个整汇总。
+
+So in `main.cpp`, firstly create an instance of `Planner` class.
+As we know about c++ feature, this will lead to the call of constructor function by this class.
+
+According to analysis above, we know that in the constructor function, several publisher and subscriber are defined.
+* publisher: "/move_base_simple/start"
+* subscriber: "/map", callback function is `setMap`
+* subscriber: "/move_base_simple/goal", callback function is `setGoal`
+* subscriber: "/initialpose", callback function is `setStart`
+
+As stated by ROS WIKI, only when the program reaches `ros::spin()` can the
+subscribers start to receive message and callback their functions.
+So process above only name some variables.
+
+Then the program goes to `plan()`.
+However, without valid start and goal point, this will not be proceeded.
+
+Now it's time for `ros::spin()`, if user provide start and goal information to `RVIZ`,
+the message will be received by those subscribers, and callback functions will be called.
+
+In callback functions `setStart` and `setGoal`, `plan()` shall be called again and again
+once when the start or goal is set or changed.
+
+Until now, data flow is basically clear.
 
 
 ## 2. Main Functions
