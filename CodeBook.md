@@ -157,7 +157,7 @@ before the program running into `ros::spin()`, message of start and goal is sent
 
 then the program goes into `plan()`
 
-### 1.2 `HybridAStar::Planner::plan()`
+### 1.2 `Planner::plan()`
 
 firstly, define list pointers and initialize lists
 
@@ -282,10 +282,104 @@ Until now, data flow is basically clear.
 
 ### 2.4 Hybrid A star algorithm
 
-### 2.5 Reed-Sheep or Dubins
+This part is in class `algorithm.cpp` and `algorithm.h`.
 
-### 2.6 Non-linear optimization
+Got 4 functions(one class member) and a struct.
+* float `aStar`
+* void `updateH`
+* Node3D* `dubinsShot`
+* Node3D* `Algorithm::hybridAStar`
+* struct `CompareNodes`
 
-### 2.7 Non-parametric interpolation
+#### 2.4.1 Node for 3D and 2D
+
+The Node class by author is defined to describe each node of hybrid A star node, 
+just like A star node with information of `x,y,g,f`.
+
+The difference between 2D and 3D is whether to take $\theta$ into consideration.
+
+In `Node2D.h and cpp`, there are several functions:
+
+* `isOnGrid`, if this node is inside the map
+* `createSuccessor(const int i)`, set the next node according to i, which has 8 options.
+* `bool Node2D::operator == (const Node2D& rhs) const`, return if the same position
+* `setIdx`, set id in a one dimension array
+
+In `Node3D.h` and `Node3D.cpp`, there are more functions:
+
+* `isOnGrid`, x and y is inside the map, and heading angle is less than 72 degree(defined by the author)
+* `isInRange`, if is in the range of test Dubins shot
+* `createSuccessor`
+
+```c++
+// R = 6, 6.75 DEG
+const float Node3D::dy[] = { 0,        -0.0415893,  0.0415893};
+const float Node3D::dx[] = { 0.7068582,   0.705224,   0.705224};
+const float Node3D::dt[] = { 0,         0.1178097,   -0.1178097};
+```
+
+<img src="images/node3d.jpg" alt="node3d" style="zoom:23%;" />
+
+```c++
+bool Node3D::isInRange(const Node3D& goal) const {
+    int random = rand() % 10 + 1;
+    // rand(), Return a random integer between 0 and RAND_MAX inclusive
+    // #define	RAND_MAX	2147483647
+    float dx = std::abs(x - goal.x) / random;
+    float dy = std::abs(y - goal.y) / random;
+    return (dx * dx) + (dy * dy) < Constants::dubinsShotDistance;
+}
+```
+
+random?
+
+```c++
+Node3D* Node3D::createSuccessor(const int i) {
+    float xSucc;
+    float ySucc;
+    float tSucc;
+
+    // calculate successor positions forward
+    if (i < 3) {
+        xSucc = x + dx[i] * cos(t) - dy[i] * sin(t);
+        ySucc = y + dx[i] * sin(t) + dy[i] * cos(t);
+        tSucc = Helper::normalizeHeadingRad(t + dt[i]);
+    }
+    // backwards
+    else {
+        xSucc = x - dx[i - 3] * cos(t) - dy[i - 3] * sin(t);
+        ySucc = y - dx[i - 3] * sin(t) + dy[i - 3] * cos(t);
+        tSucc = Helper::normalizeHeadingRad(t - dt[i - 3]);
+    }
+
+    return new Node3D(xSucc, ySucc, tSucc, g, 0, this, i);
+}
+```
+
+<img src="images/update3d.jpg" alt="update" style="zoom:20%;" />
+
+```c++
+static inline float normalizeHeadingRad(float t) {
+  if (t < 0) {
+    t = t - 2.f * M_PI * (int)(t / (2.f * M_PI));
+    return 2.f * M_PI + t;
+  }
+
+  return t - 2.f * M_PI * (int)(t / (2.f * M_PI));
+}
+```
+
+just a normalize function if $t<0$;
+
+
+
+#### 2.4.2 Dubins
+
+`dubinsShot` seems to be the one out of some complex data structure, so let's analyse it secondly.
+
+
+### 2.5 Non-linear optimization
+
+### 2.6 Non-parametric interpolation
 
 ## 3. Tricks

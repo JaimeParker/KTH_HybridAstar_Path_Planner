@@ -3,12 +3,11 @@
 /*!
    \file constants.h
    \brief This is a collection of constants that are used throughout the project.
-   \todo All constants need to be checked and documented
 */
 
-////###################################################
-////                                               INFO
-////###################################################
+//###################################################
+//                                               INFO
+//###################################################
 //    HEADING => 0 - 359 degrees, 0 being north pointing towards positive Y
 //    X-COORDINATE => designating the width of the grid
 //    Y-COORDINATE => designating the height of the grid
@@ -122,21 +121,21 @@ static const int positionResolution = 10;
 static const int positions = positionResolution * positionResolution;
 /// A structure describing the relative position of the occupied cell based on the center of the vehicle
 struct relPos {
-  /// the x position relative to the center
-  int x;
-  /// the y position relative to the center
-  int y;
+    /// the x position relative to the center
+    int x;
+    /// the y position relative to the center
+    int y;
 };
 /// A structure capturing the lookup for each theta configuration
 struct config {
-  /// the number of cells occupied by this configuration of the vehicle
-  int length;
-  /*!
+    /// the number of cells occupied by this configuration of the vehicle
+    int length;
+    /*!
      \var relPos pos[64]
      \brief The maximum number of occupied cells
      \todo needs to be dynamic
-  */
-  relPos pos[64];
+    */
+    relPos pos[64];
 };
 
 // _________________
@@ -148,12 +147,12 @@ static const float minRoadWidth = 2;
 // COLOR DEFINITIONS FOR VISUALIZATION PURPOSES
 /// A structure to express colors in RGB values
 struct color {
-  /// the red portion of the color
-  float red;
-  /// the green portion of the color
-  float green;
-  /// the blue portion of the color
-  float blue;
+    /// the red portion of the color
+    float red;
+    /// the green portion of the color
+    float green;
+    /// the blue portion of the color
+    float blue;
 };
 /// A definition for a color used for visualization
 static constexpr color teal = {102.f / 255.f, 217.f / 255.f, 239.f / 255.f};
