@@ -81,11 +81,15 @@ void Node3D::updateG() {
     if (prim < 3) {
         // if i < 3
         // penalize turning
+        // if the direction changed from last motion
         if (pred->prim != prim) {
-            // penalize change of direction
+            // penalize change of direction, from backward to forward
             if (pred->prim > 2) {
+                // penaltyTurning = 10.5, penaltyCOD = 2.0
                 g += dx[0] * Constants::penaltyTurning * Constants::penaltyCOD;
             } else {
+                // if still forward, just a minor direction changing
+                // penaltyTurning = 10.5
                 g += dx[0] * Constants::penaltyTurning;
             }
         } else {
@@ -106,6 +110,7 @@ void Node3D::updateG() {
             g += dx[0] * Constants::penaltyReversing;
         }
     }
+    // TODO: leak here
 
 }
 

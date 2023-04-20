@@ -371,11 +371,59 @@ static inline float normalizeHeadingRad(float t) {
 
 just a normalize function if $t<0$;
 
+```c++
+void Node3D::updateG() {
+    // forward driving
+    if (prim < 3) {
+        // if i < 3
+        // penalize turning
+        // if the direction changed from last motion
+        if (pred->prim != prim) {
+            // penalize change of direction, from backward to forward
+            if (pred->prim > 2) {
+                // penaltyTurning = 10.5, penaltyCOD = 2.0
+                g += dx[0] * Constants::penaltyTurning * Constants::penaltyCOD;
+            } else {
+                // if still forward, just a minor direction changing
+                // penaltyTurning = 10.5
+                g += dx[0] * Constants::penaltyTurning;
+            }
+        } else {
+            g += dx[0];
+        }
+    }
+    // reverse driving
+    else {
+        // penalize turning and reversing
+        if (pred->prim != prim) {
+            // penalize change of direction
+            if (pred->prim < 3) {
+                g += dx[0] * Constants::penaltyTurning * Constants::penaltyReversing * Constants::penaltyCOD;
+            } else {
+                g += dx[0] * Constants::penaltyTurning * Constants::penaltyReversing;
+            }
+        } else {
+            g += dx[0] * Constants::penaltyReversing;
+        }
+    }
 
+}
+```
+
+for `updateG` function, take forward motion as an example,
+
+* if the motion of last step is the same as this one, $g=g+dx[0]$
+* else, will add other penalty
+  * if the two motion is both forward, add a slight penalty
+  * else, add a heavier penalty
+
+I doubt about whether this method can satisfy dynamic constraint.
 
 #### 2.4.2 Dubins
 
 `dubinsShot` seems to be the one out of some complex data structure, so let's analyse it secondly.
+
+
 
 
 ### 2.5 Non-linear optimization
