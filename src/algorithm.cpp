@@ -64,24 +64,25 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
     // mark start as open
     start.open();
     // push on priority queue aka open list
+    // remember, Node 3D is a class of pointers
     O.push(&start);
     iPred = start.setIdx(width, height);
     nodes3D[iPred] = start;
 
     // NODE POINTER
-    Node3D* nPred;
-    Node3D* nSucc;
+    Node3D* nPred;  // predecessor, or the current node, I don't know
+    // confusing name, consider a better definition or a clear comment
+    Node3D* nSucc;  // successor
 
     // float max = 0.f;
 
     // continue until O empty
     while (!O.empty()) {
-        // pop node with lowest cost from priority queue
+        // pop node with the lowest cost from priority queue
         nPred = O.top();
         // set index
         iPred = nPred->setIdx(width, height);
         iterations++;
-
         // RViz visualization
         if (Constants::visualization) {
             visualization.publishNode3DPoses(*nPred);
@@ -138,7 +139,7 @@ Node3D* Algorithm::hybridAStar(Node3D& start,
                     // ensure successor is on grid and traversable
                     if (nSucc->isOnGrid(width, height) && configurationSpace.isTraversable(nSucc)) {
 
-                        // ensure successor is not on closed list or it has the same index as the predecessor
+                        // ensure successor is not on closed list, or it has the same index as the predecessor
                         if (!nodes3D[iSucc].isClosed() || iPred == iSucc) {
 
                             // calculate new G value
@@ -230,7 +231,7 @@ float aStar(Node2D& start,
 
     // continue until O empty
     while (!O.empty()) {
-        // pop node with lowest cost from priority queue
+        // pop node with the lowest cost from priority queue
         nPred = O.top();
         // set index
         iPred = nPred->setIdx(width);
@@ -377,7 +378,7 @@ void updateH(Node3D& start, const Node3D& goal,
         dbEnd->setXY(goal.getX(), goal.getY());
         dbEnd->setYaw(goal.getT());
         dubinsCost = dubinsPath.distance(dbStart, dbEnd);
-  }
+    }
 
     // if reversing is active use a
     if (Constants::reverse && !Constants::dubins) {
@@ -395,7 +396,7 @@ void updateH(Node3D& start, const Node3D& goal,
         //    std::cout << "calculated Reed-Sheep Heuristic in ms: " << d * 1000 << std::endl;
     }
 
-    // if twoD heuristic is activated determine shortest path
+    // if twoD heuristic is activated determine the shortest path
     // unconstrained with obstacles
     if (Constants::twoD && !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered()) {
         //    ros::Time t0 = ros::Time::now();

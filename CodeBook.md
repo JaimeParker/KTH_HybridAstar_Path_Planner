@@ -289,7 +289,7 @@ Got 4 functions(one class member) and a struct.
 * void `updateH`
 * Node3D* `dubinsShot`
 * Node3D* `Algorithm::hybridAStar`
-* struct `CompareNodes`
+* struct `CompareNodes`.
 
 #### 2.4.1 Node for 3D and 2D
 
@@ -423,7 +423,13 @@ I doubt about whether this method can satisfy dynamic constraint.
 
 `dubinsShot` seems to be the one out of some complex data structure, so let's analyse it secondly.
 
+#### 2.4.3 A star
 
+Let's look back at conventional a star,
+
+![astar](images/astar.jpg)
+
+and
 
 
 ### 2.5 Non-linear optimization
