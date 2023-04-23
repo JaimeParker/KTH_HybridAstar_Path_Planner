@@ -423,13 +423,77 @@ I doubt about whether this method can satisfy dynamic constraint.
 
 `dubinsShot` seems to be the one out of some complex data structure, so let's analyse it secondly.
 
+```c++
+Node3D* dubinsShot(Node3D& start, const Node3D& goal, CollisionDetection& configurationSpace) {
+    // start
+    double q0[] = { start.getX(), start.getY(), start.getT() };
+    // goal
+    double q1[] = { goal.getX(), goal.getY(), goal.getT() };
+    // initialize the path
+    DubinsPath path;
+    // calculate the path
+    dubins_init(q0, q1, Constants::r, &path);
+
+    int i = 0;
+    float x = 0.f;
+    float length = dubins_path_length(&path);
+
+    Node3D* dubinsNodes = new Node3D [(int)(length / Constants::dubinsStepSize) + 1];
+
+    // avoid duplicate waypoint
+    x += Constants::dubinsStepSize;
+    while (x <  length) {
+        double q[3];
+        dubins_path_sample(&path, x, q);
+        dubinsNodes[i].setX(q[0]);
+        dubinsNodes[i].setY(q[1]);
+        dubinsNodes[i].setT(Helper::normalizeHeadingRad(q[2]));
+
+        // collision check
+        if (configurationSpace.isTraversable(&dubinsNodes[i])) {
+            // set the predecessor to the previous step
+            if (i > 0) {
+                dubinsNodes[i].setPred(&dubinsNodes[i - 1]);
+            } else {
+                dubinsNodes[i].setPred(&start);
+            }
+
+            if (&dubinsNodes[i] == dubinsNodes[i].getPred()) {
+                std::cout << "looping shot";
+            }
+
+            x += Constants::dubinsStepSize;
+            i++;
+        } else {
+            //      std::cout << "Dubins shot collided, discarding the path" << "\n";
+            // delete all nodes
+            delete [] dubinsNodes;
+            return nullptr;
+        }
+    }
+
+    //  std::cout << "Dubins shot connected, returning the path" << "\n";
+    return &dubinsNodes[i - 1];
+}
+```
+
+in the `dubins.cpp`, there is a detailed method.
+
 #### 2.4.3 A star
 
 Let's look back at conventional a star,
 
 ![astar](images/astar.jpg)
 
-and
+and they are basically the same. though the name of variables of this code is a little uncomfortable to an OCD patient like me.
+
+#### 2.4.4 Update H
+
+we know that $f=g+h$, and $g$ is related to the node's predecessor.
+
+$h$ is associated with the position from node to goal, for conventional A star this can be $\sqrt{x^2+y^2}$. However, if $\theta$ is being considered, this $f$ could be more complicated, so the author has a function in `algorithm.cpp` to illustrate it.
+
+
 
 
 ### 2.5 Non-linear optimization
