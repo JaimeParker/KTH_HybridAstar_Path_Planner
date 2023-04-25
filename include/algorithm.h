@@ -12,6 +12,7 @@ typedef ompl::base::SE2StateSpace::StateType State;
 #include "node2d.h"
 #include "visualize.h"
 #include "collisiondetection.h"
+#include <ros/ros.h>
 
 namespace HybridAStar {
 class Node3D;

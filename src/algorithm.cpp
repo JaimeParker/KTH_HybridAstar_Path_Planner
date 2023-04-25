@@ -265,6 +265,9 @@ float aStar(Node2D& start,
             // GOAL TEST
             if (*nPred == goal) {
                 return nPred->getG();
+                // if the next node is goal, then G means the traversal path from start to end
+                // aStar used in Hybrid A star for update H, start = goal and goal = start as param
+                // just to get the f in conventional A star and compare it with Reed and Sheep Curve
             }
             // ____________________
             // CONTINUE WITH SEARCH
@@ -384,7 +387,7 @@ void updateH(Node3D& start, const Node3D& goal,
     if (Constants::reverse && !Constants::dubins) {
         //    ros::Time t0 = ros::Time::now();
         ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
-        State* rsStart = (State*)reedsSheppPath.allocState();
+        State* rsStart = (State*)reedsSheppPath.allocState();  // ompl::base::SE2StateSpace::StateType State
         State* rsEnd = (State*)reedsSheppPath.allocState();
         rsStart->setXY(start.getX(), start.getY());
         rsStart->setYaw(start.getT());
@@ -399,20 +402,25 @@ void updateH(Node3D& start, const Node3D& goal,
     // if twoD heuristic is activated determine the shortest path
     // unconstrained with obstacles
     if (Constants::twoD && !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered()) {
-        //    ros::Time t0 = ros::Time::now();
         // create a 2d start node
         Node2D start2d(start.getX(), start.getY(), 0, 0, nullptr);
         // create a 2d goal node
         Node2D goal2d(goal.getX(), goal.getY(), 0, 0, nullptr);
         // run 2d astar and return the cost of the cheapest path for that node
+        float temp = aStar(goal2d,
+                           start2d, nodes2D,
+                           width, height,
+                           configurationSpace,
+                            visualization);
         nodes2D[(int)start.getY() * width + (int)start.getX()].setG(aStar(goal2d,
                                                                           start2d, nodes2D,
                                                                           width, height,
                                                                           configurationSpace,
                                                                           visualization));
-        //    ros::Time t1 = ros::Time::now();
-        //    ros::Duration d(t1 - t0);
-        //    std::cout << "calculated 2D Heuristic in ms: " << d * 1000 << std::endl;
+        // the first param should be start, second should be goal
+        // it's okay
+        // get the cost by conventional A star and Reed and Sheep Curve
+        // compare, get the greater one
     }
 
     if (Constants::twoD) {
@@ -422,10 +430,9 @@ void updateH(Node3D& start, const Node3D& goal,
                           ((start.getY() - (long)start.getY()) - (goal.getY() -
                           (long)goal.getY())) * ((start.getY() - (long)start.getY()) - (goal.getY() - (long)goal.getY())));
         twoDCost = nodes2D[(int)start.getY() * width + (int)start.getX()].getG() - twoDoffset;
-
     }
 
-    // return the maximum of the heuristics, making the heuristic admissable
+    // return the maximum of the heuristics, making the heuristic admissible
     start.setH(std::max(reedsSheppCost, std::max(dubinsCost, twoDCost)));
 }
 

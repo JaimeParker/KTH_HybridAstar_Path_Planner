@@ -280,6 +280,8 @@ Until now, data flow is basically clear.
 
 ### 2.3 Dynamic voronoi diagram construction
 
+this part will not be analyzed temporarily.
+
 ### 2.4 Hybrid A star algorithm
 
 This part is in class `algorithm.cpp` and `algorithm.h`.
@@ -479,7 +481,7 @@ Node3D* dubinsShot(Node3D& start, const Node3D& goal, CollisionDetection& config
 
 in the `dubins.cpp`, there is a detailed method.
 
-#### 2.4.3 A star
+#### 2.4.3 Conventional A star
 
 Let's look back at conventional a star,
 
@@ -493,10 +495,93 @@ we know that $f=g+h$, and $g$ is related to the node's predecessor.
 
 $h$ is associated with the position from node to goal, for conventional A star this can be $\sqrt{x^2+y^2}$. However, if $\theta$ is being considered, this $f$ could be more complicated, so the author has a function in `algorithm.cpp` to illustrate it.
 
+one is to use Reed and Sheep curves to get cost, 
 
+```c++
+    if (Constants::reverse && !Constants::dubins) {
+        ompl::base::ReedsSheppStateSpace reedsSheppPath(Constants::r);
+        State* rsStart = (State*)reedsSheppPath.allocState();  // ompl::base::SE2StateSpace::StateType State
+        State* rsEnd = (State*)reedsSheppPath.allocState();
+        rsStart->setXY(start.getX(), start.getY());
+        rsStart->setYaw(start.getT());
+        rsEnd->setXY(goal.getX(), goal.getY());
+        rsEnd->setYaw(goal.getT());
+        reedsSheppCost = reedsSheppPath.distance(rsStart, rsEnd);
+    }
+```
 
+remind that the start and goal denote two points in space, not the exactly start and goal position.
+
+the second is 2-D heuristic,
+
+```c++
+    // if twoD heuristic is activated determine the shortest path
+    // unconstrained with obstacles
+    if (Constants::twoD && !nodes2D[(int)start.getY() * width + (int)start.getX()].isDiscovered()) {
+        //    ros::Time t0 = ros::Time::now();
+        // create a 2d start node
+        Node2D start2d(start.getX(), start.getY(), 0, 0, nullptr);
+        // create a 2d goal node
+        Node2D goal2d(goal.getX(), goal.getY(), 0, 0, nullptr);
+        // run 2d astar and return the cost of the cheapest path for that node
+        nodes2D[(int)start.getY() * width + (int)start.getX()].setG(aStar(goal2d,
+                                                                          start2d, nodes2D,
+                                                                          width, height,
+                                                                          configurationSpace,
+                                                                          visualization));
+    }
+
+    if (Constants::twoD) {
+        // offset for same node in cell
+        twoDoffset = sqrt(((start.getX() - (long)start.getX()) - (goal.getX() - (long)goal.getX())) * ((start.getX() -
+                          (long)start.getX()) - (goal.getX() - (long)goal.getX())) +
+                          ((start.getY() - (long)start.getY()) - (goal.getY() -
+                          (long)goal.getY())) * ((start.getY() - (long)start.getY()) - (goal.getY() - (long)goal.getY())));
+        twoDCost = nodes2D[(int)start.getY() * width + (int)start.getX()].getG() - twoDoffset;
+        // FIXME: why getG() here, isn't the function update H?
+    }
+
+    start.setH(std::max(reedsSheppCost, std::max(dubinsCost, twoDCost)));
+```
+
+since `dubins` is default  false, the last lambda is:
+
+```c++
+start.setG(std::max(reedsSheppCost, twoDCost));
+```
+
+这个地方必须是取G，因为在作者的传统A*函数中，最终的cost值是记录在G中的，所以只能用`getG`去拿到数据。然后和Reed曲线对比，取最大值。
+
+**why the biggest?**
+
+writer said in the comment, for admissible.
+
+assume that A star with a smaller cost, while Reed and Sheep is the shortest path in theory when the obstacles are not taken into consideration.
+
+So there only left with one solution, conventional A star is heavily not dynamic allowable. In this situation, a greater cost is admissible for forward planning.
+
+Remind that `updateH` in `Node2D` gets the Euclid distance. 
+
+#### 2.4.5 Hybrid A star process
+
+```
+if goal, stop and return this successor node
+if within dubins search and collision free, use the dubins path
+else, proceed normal search
+	if successor is valid and isn't obstacle,
+		if successor is not in close list and has the same index as the predecessor,
+			update G and set new G
+			if successor not on open list or found a shorter way to the cell
+				get H, update H using updateH in algorithm.cpp
+				if the successor is in the same cell but the f value is larger
+					delete and continue
+				else if successor is in the same cell and the C value is lower
+					set predecessor to predecessor of predecessor
+```
 
 ### 2.5 Non-linear optimization
+
+
 
 ### 2.6 Non-parametric interpolation
 
