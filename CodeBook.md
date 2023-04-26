@@ -1,5 +1,8 @@
 # Hybrid A star Algorithm Analysis
 
+* [author's master thesis](https://kth.diva-portal.org/smash/get/diva2:1057261/FULLTEXT01.pdf)
+* [code repo github](https://github.com/karlkurzer/path_planner)
+
 ## 1. Data Flow
 
 in `main.cpp`
@@ -274,9 +277,108 @@ Until now, data flow is basically clear.
 
 ## 2. Main Functions
 
-### 2.1 ROS and OMPL interface
+### 2.1 Map data structure and usage
 
-### 2.2 Map data structure and usage
+* in `manual.launch`, node `map_server` is launched and use the `map.yaml` to config.
+* node will publish topic called `/map` automatically, as said in [ROS wiki](http://wiki.ros.org/map_server), type of this topic is [nav_msgs/OccupancyGrid](http://docs.ros.org/en/api/nav_msgs/html/msg/OccupancyGrid.html)
+* then in the planning part, a subscriber named `subMap` will receive map data from topic.
+* after that, work belongs to planner
+
+```c++
+	// initiate the broadcaster
+    ros::init(argc, argv, "tf_broadcaster");
+    ros::NodeHandle n;
+
+    // subscribe to map updates
+    ros::Subscriber sub_map = n.subscribe("/occ_map", 1, setMap);
+```
+
+and
+
+```c++
+void setMap(const nav_msgs::OccupancyGrid::Ptr map) {
+    std::cout << "Creating transform for map..." << std::endl;
+    grid = map;
+}
+```
+
+when program goes to `ros::Spinonce()`, subscriber will receive message and call the callback function.
+
+then `grid` is a pointer that pointing to the `map`.
+
+> 对于有些传输特别快的消息，尤其需要注意合理控制消息池大小和ros::spinOnce()执行频率; 比如消息送达频率为10Hz, ros::spinOnce()的调用频率为5Hz，那么消息池的大小就一定要大于2，才能保证数据不丢失，无延迟。
+
+### 2.2 ROS interface
+
+in the launch file, manual, 
+
+```xml
+<launch>
+ <!-- Turn on hybrid_astar node -->
+ <node name="hybrid_astar" pkg="hybrid_astar" type="hybrid_astar" /> 
+ <node name="tf_broadcaster" pkg="hybrid_astar" type="tf_broadcaster" />
+ <node name="map_server" pkg="map_server" type="map_server" args="$(find hybrid_astar)/maps/map.yaml" />
+ <node name="rviz" pkg="rviz" type="rviz" args="-d $(find hybrid_astar)/launch/config.rviz" />
+</launch>
+```
+
+there are four main nodes, including pose, map, `rviz` and planner node.
+
+hybrid a star node will be analyzed later on. Now we shall focus on the ROS part, which is the other three.
+
+#### 2.2.1 tf broadcaster
+
+`/tf_broadcaster` publish `/tf` topic and received by `/hybrid_astar`.
+
+```c++
+int main(int argc, char** argv) {
+    // initiate the broadcaster
+    ros::init(argc, argv, "tf_broadcaster");
+    ros::NodeHandle n;
+
+    // subscribe to map updates
+    ros::Subscriber sub_map = n.subscribe("/occ_map", 1, setMap);
+    tf::Pose tfPose;
+
+
+    ros::Rate r(100);
+    tf::TransformBroadcaster broadcaster;
+
+    while (ros::ok()) {
+        // transform from geometry msg to TF
+        if (grid != nullptr) {
+            tf::poseMsgToTF(grid->info.origin, tfPose);
+        }
+
+        // odom to map
+        broadcaster.sendTransform(tf::StampedTransform(
+                tf::Transform(tf::Quaternion(0, 0, 0, 1),
+                              tfPose.getOrigin()),ros::Time::now(),
+                              "odom", "map"));
+
+        // map to path
+        broadcaster.sendTransform(tf::StampedTransform(
+                tf::Transform(tf::Quaternion(0, 0, 0, 1),
+                              tf::Vector3(0, 0, 0)),ros::Time::now(),
+                              "map", "path"));
+
+        ros::spinOnce();
+        r.sleep();
+    }
+}
+```
+
+* `tf::Transform` refer to a relative movement and rotation，指的是两个相对点之间的平动与旋转转换关系
+* `tf::StampedTransform`，from one frame to another frame. 指的是两个系之间的转换
+* `broadcaster.sendTransform`
+
+
+
+#### 2.2.2 map server
+
+#### 2.2.3 rviz
+
+
 
 ### 2.3 Dynamic voronoi diagram construction
 
@@ -579,10 +681,175 @@ else, proceed normal search
 					set predecessor to predecessor of predecessor
 ```
 
-### 2.5 Non-linear optimization
+### 2.5 Non-linear optimization and Non-parametric interpolation
+
+In this part, we'll focus on `smoother.cpp` and its header.
+
+after the hybrid a star process, now come to optimization.
+
+in `main.cpp`
+
+```c++
+        // TRACE THE PATH
+        smoother.tracePath(nSolution);
+        // CREATE THE UPDATED PATH
+        path.updatePath(smoother.getPath());
+        // SMOOTH THE PATH
+        smoother.smoothPath(voronoiDiagram);
+        // CREATE THE UPDATED PATH
+        smoothedPath.updatePath(smoother.getPath());
+```
+
+and in the `planner.h`
+
+```c++
+    /// The path produced by the hybrid A* algorithm
+    Path path;
+    /// The smoother used for optimizing the path
+    Smoother smoother;
+    /// The path smoothed and ready for the controller
+    Path smoothedPath = Path(true);
+    /// The visualization used for search visualization
+```
+
+there are several class variables.
+
+#### 2.5.1 trace path
+
+definition of this function:
+
+* input: path
+* output: smoothed path in vector
+
+```c++
+    /*!
+        \brief Given a node pointer the path to the root node will be traced recursively
+        \param node a 3D node, usually the goal node
+        \param i a parameter for counting the number of nodes
+    */
+    void tracePath(const Node3D* node, int i = 0, std::vector<Node3D> path = std::vector<Node3D>());
+```
+
+3 parameters, including one default parameter path.
+
+```c++
+void Smoother::tracePath(const Node3D* node, int i, std::vector<Node3D> path) {
+    if (node == nullptr) {
+        this->path = path;
+        return;
+    }
+
+    i++;
+    path.push_back(*node);
+    tracePath(node->getPred(), i, path);
+}
+```
+
+In planner,
+
+```c++
+smoother.tracePath(nSolution);
+```
+
+`nSolution` is a variable of  `Node3D*` type.
+
+干嘛非得自己调用自己，直接取length然后for循环不行吗？
+
+#### 2.5.2 update path
+
+analyze the function `updatePath`.
+
+in `smoother.h`,
+
+```c++
+const std::vector<Node3D>& getPath() {return path;}
+```
+
+this path is what we get at the code block
+
+```c++
+    if (node == nullptr) {
+        this->path = path;
+        return;
+    }
+```
+
+then `this->path`, or the `path` member of the class is sent to function `updatePath`
+
+```c++
+path.updatePath(smoother.getPath());
+```
+
+in this function,
+
+```c++
+    int k = 0;
+    for (size_t i = 0; i < nodePath.size(); ++i) {
+        addSegment(nodePath[i]);
+        addNode(nodePath[i], k);
+        k++;
+        addVehicle(nodePath[i], k);
+        k++;
+    }
+```
+
+this part is for visualization, ignore for now.
+
+#### 2.5.3 smooth path
+
+```c++
+smoother.smoothPath(voronoiDiagram);
+```
+
+in the loop of all points on path,
+
+firstly
+
+```c++
+            Vector2D xim2(newPath[i - 2].getX(), newPath[i - 2].getY());
+            Vector2D xim1(newPath[i - 1].getX(), newPath[i - 1].getY());
+            Vector2D xi(newPath[i].getX(), newPath[i].getY());
+            Vector2D xip1(newPath[i + 1].getX(), newPath[i + 1].getY());
+            Vector2D xip2(newPath[i + 2].getX(), newPath[i + 2].getY());
+            Vector2D correction;
+```
+
+it's from $x_{i-2}$ to $x_{i+2}$.
+
+then,
+
+```c++
+       	// the following points shall not be smoothed
+        // keep these points fixed if they are a cusp point or adjacent to one
+        if (isCusp(newPath, i)) { continue; }
+```
+
+let's see this function `isCusp`
+
+```c++
+inline bool isCusp(const std::vector<Node3D>& path, int i) {
+    bool revim2 = path[i - 2].getPrim() > 3 ;
+    bool revim1 = path[i - 1].getPrim() > 3 ;
+    bool revi   = path[i].getPrim() > 3 ;
+    bool revip1 = path[i + 1].getPrim() > 3 ;
+    //  bool revip2 = path[i + 2].getPrim() > 3 ;
+
+    return (revim2 != revim1 || revim1 != revi || revi != revip1);
+}
+```
+
+although this sign should be `>=3` for a cusp point, which is a reverse motion.
+
+this is referring a forward to reverse or backward change, which is called a cusp point.
+
+the other smoothing operation including 4 parts, just as the original paper said.
+
+And the author didn't finish voronoi part.
+
+### 2.6 Appendix 1 OPML lib
 
 
 
-### 2.6 Non-parametric interpolation
+
 
 ## 3. Tricks
