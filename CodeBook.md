@@ -370,9 +370,104 @@ int main(int argc, char** argv) {
 
 * `tf::Transform` refer to a relative movement and rotation，指的是两个相对点之间的平动与旋转转换关系
 * `tf::StampedTransform`，from one frame to another frame. 指的是两个系之间的转换
-* `broadcaster.sendTransform`
+* `broadcaster.sendTransform`, send this transform
 
+注释掉这两个`broadcaster.sendTransform`后，调试`hybrid a star`这个node，不会报missing start or end point这个错（作者写的）；
 
+start和end在rivz中设置完后，debug信息为：
+
+```
+### Hybrid A* Search
+A pathfinding algorithm on grids, by Karl Kurzer
+### cell size: 1
+### mode: manual
+I am building the collision lookup table... done!
+missing goal or start
+created Voronoi Diagram in ms: 1.157173000
+I am seeing a new start x:10.3428 y:13.7992 t:37.875
+missing goal or start
+I am seeing a new goal x:65.6446 y:65.0988 t:271.364
+TIME in ms: 46.885373000
+```
+
+可以看到两个start和end point已经设置好了，信息传到了hybrid里，planner已经完成。但是在rviz中不会显示path和vehicle的路径，没传过来。
+
+```c++
+        // _________________________________
+        // PUBLISH THE RESULTS OF THE SEARCH
+        path.publishPath();
+        path.publishPathNodes();
+        path.publishPathVehicles();
+        smoothedPath.publishPath();
+        smoothedPath.publishPathNodes();
+        smoothedPath.publishPathVehicles();
+        visualization.publishNode3DCosts(nodes3D, width, height, depth);
+        visualization.publishNode2DCosts(nodes2D, width, height);
+```
+
+问题就出在这些publisher里。
+
+![](images/rviz.png)
+
+No TF data and two MarkerArray are empty.
+
+![](images/debug_ros.png)
+
+a weird rqt graph...
+
+通过断点调试debug，发现确实存在smoothed path，数据基本正常，但在图中没有显示。
+
+如果在rqt graph中取消对dead sinks的隐藏，可以看到多出了若干topic，如：
+
+* /path 开头
+* /visualize 开头
+
+可以再次证明，smooth已经完成，并且`path`和`smoothPath`两个类成员的变量中包括了对应的信息，唯一的问题就是，该marker array信息，没有传给rviz，或是没有publish成功。
+
+好像是因为，这些话题的函数中，都有规定，let's take `publishNode3DPose` as an example,
+
+```c++
+void Visualize::publishNode3DPose(Node3D& node) {
+    geometry_msgs::PoseStamped pose;
+    pose.header.frame_id = "path";
+    pose.header.stamp = ros::Time::now();
+    pose.header.seq = 0;
+    pose.pose.position.x = node.getX() * Constants::cellSize;
+    pose.pose.position.y = node.getY() * Constants::cellSize;
+
+    //FORWARD
+    if (node.getPrim() < 3) {
+        pose.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT());
+    }
+    //REVERSE
+    else {
+        pose.pose.orientation = tf::createQuaternionMsgFromYaw(node.getT() + M_PI);
+    }
+
+    // PUBLISH THE POSE
+    pubNode3D.publish(pose);
+}
+```
+
+notice that the `pose.header.frame_id="path"`, while there is no such frame defaultly.
+
+and the origin of odom frame is in the center of it, transfer it to the map frame, then to the path frame, so that the visualization works.
+
+then I changed a little thing in the `tf_broadcaster.cpp`, delete other Transforms
+
+```c++
+        // tset my thought
+        broadcaster.sendTransform(tf::StampedTransform(
+                        tf::Transform(tf::Quaternion(0, 0, 0, 1),
+                                      tfPose.getOrigin()), ros::Time::now(),
+                                      "map", "path"
+                        )
+                );
+```
+
+it seems work well.
+
+Because `tfPose.getOrigin()` return with a **zero**.
 
 #### 2.2.2 map server
 

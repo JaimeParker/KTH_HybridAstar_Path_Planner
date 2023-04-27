@@ -230,6 +230,7 @@ void Planner::plan() {
 
         // _________________________________
         // PUBLISH THE RESULTS OF THE SEARCH
+        // path and smoothedPath are all path type defined in Path.h
         path.publishPath();
         path.publishPathNodes();
         path.publishPathVehicles();

@@ -47,6 +47,12 @@ int main(int argc, char** argv) {
                               tf::Vector3(0, 0, 0)),ros::Time::now(),
                               "map", "path"));
 
+//        // tset my thought
+//        broadcaster.sendTransform(tf::StampedTransform(
+//                        tf::Transform(tf::Quaternion(0, 0, 0, 1),
+//                                      tfPose.getOrigin()), ros::Time::now(),
+//                                      "map", "path"));
+
         ros::spinOnce();
         r.sleep();
     }
