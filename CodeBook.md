@@ -471,6 +471,10 @@ Because `tfPose.getOrigin()` return with a **zero**.
 
 #### 2.2.2 map server
 
+Actually there isn't a map server in `cmakelist.txt`, but in the launch file, so the best way is to learn ros wiki.
+
+ignore here.
+
 #### 2.2.3 rviz
 
 
